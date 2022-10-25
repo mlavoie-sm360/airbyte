@@ -93,6 +93,10 @@ class FBMarketingStream(Stream, ABC):
 
         yield from records
 
+    def stream_slices(self, stream_state: Mapping[str, Any] = None, **kwargs) -> Iterable[Optional[Mapping[str, Any]]]:
+        for account in self._api.accounts:
+            yield {"account": account}
+
     def read_records(
         self,
         sync_mode: SyncMode,
@@ -101,7 +105,7 @@ class FBMarketingStream(Stream, ABC):
         stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Mapping[str, Any]]:
         """Main read method used by CDK"""
-        records_iter = self.list_objects(params=self.request_params(stream_state=stream_state))
+        records_iter = self.list_objects(stream_slice=stream_slice, params=self.request_params(stream_slice=stream_slice, stream_state=stream_state))
         loaded_records_iter = (record.api_get(fields=self.fields, pending=self.use_batch) for record in records_iter)
         if self.use_batch:
             loaded_records_iter = self.execute_in_batch(loaded_records_iter)
@@ -113,7 +117,7 @@ class FBMarketingStream(Stream, ABC):
                 yield record  # execute_in_batch will emmit dicts
 
     @abstractmethod
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
         """List FB objects, these objects will be loaded in read_records later with their details.
 
         :param params: params to make request
@@ -170,30 +174,38 @@ class FBMarketingIncrementalStream(FBMarketingStream, ABC):
 
     def get_updated_state(self, current_stream_state: MutableMapping[str, Any], latest_record: Mapping[str, Any]):
         """Update stream state from latest record"""
-        potentially_new_records_in_the_past = self._include_deleted and not current_stream_state.get("include_deleted", False)
+        account_id = latest_record.get("account_id")
         record_value = latest_record[self.cursor_field]
-        state_value = current_stream_state.get(self.cursor_field) or record_value
+        state_value = current_stream_state.get(account_id, {}).get(self.cursor_field) or record_value
         max_cursor = max(pendulum.parse(state_value), pendulum.parse(record_value))
+
+        potentially_new_records_in_the_past = self._include_deleted and not current_stream_state.get("include_deleted", False)
         if potentially_new_records_in_the_past:
             max_cursor = record_value
 
-        return {
-            self.cursor_field: str(max_cursor),
-            "include_deleted": self._include_deleted,
-        }
+        updated_state = deep_merge(current_stream_state, {
+            account_id: {
+                self.cursor_field: str(max_cursor),
+                "include_deleted": self._include_deleted,
+            }
+        })
 
-    def request_params(self, stream_state: Mapping[str, Any], **kwargs) -> MutableMapping[str, Any]:
+        return updated_state
+
+    def request_params(self, stream_slice:dict, stream_state: Mapping[str, Any], **kwargs) -> MutableMapping[str, Any]:
         """Include state filter"""
         params = super().request_params(**kwargs)
-        params = deep_merge(params, self._state_filter(stream_state=stream_state or {}))
+        params = deep_merge(params, self._state_filter(stream_slice=stream_slice, stream_state=stream_state or {}))
         return params
 
-    def _state_filter(self, stream_state: Mapping[str, Any]) -> Mapping[str, Any]:
+    def _state_filter(self, stream_slice: dict, stream_state: Mapping[str, Any]) -> Mapping[str, Any]:
         """Additional filters associated with state if any set"""
-        state_value = stream_state.get(self.cursor_field)
+        account_id = stream_slice.get("account", {}).get("account_id")
+        account_stream_state = stream_state.get(account_id, {})
+        state_value = account_stream_state.get(self.cursor_field)
         filter_value = self._start_date if not state_value else pendulum.parse(state_value)
 
-        potentially_new_records_in_the_past = self._include_deleted and not stream_state.get("include_deleted", False)
+        potentially_new_records_in_the_past = self._include_deleted and not account_stream_state.get("include_deleted", False)
         if potentially_new_records_in_the_past:
             self.logger.info(f"Ignoring bookmark for {self.name} because of enabled `include_deleted` option")
             filter_value = self._start_date

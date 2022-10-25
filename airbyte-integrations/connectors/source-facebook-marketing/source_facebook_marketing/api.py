@@ -6,6 +6,7 @@ import json
 import logging
 from dataclasses import dataclass
 from time import sleep
+from typing import List
 
 import backoff
 import pendulum
@@ -167,7 +168,12 @@ class API:
     @cached_property
     def account(self) -> AdAccount:
         """Find current account"""
-        return self._find_account(self._account_id)
+        return next(iter(self.accounts), None)
+
+    @cached_property
+    def accounts(self) -> List[AdAccount]:
+        """Find current accounts"""
+        return [self._find_account(acc.strip()) for acc in self._account_id.split(",")]
 
     @staticmethod
     def _find_account(account_id: str) -> AdAccount:

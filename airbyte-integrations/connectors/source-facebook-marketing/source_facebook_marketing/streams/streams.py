@@ -65,8 +65,9 @@ class AdCreatives(FBMarketingStream):
                 record["thumbnail_data_url"] = fetch_thumbnail_data_url(record.get("thumbnail_url"))
             yield record
 
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_ad_creatives(params=params)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_ad_creatives(params=params)
 
 
 class CustomConversions(FBMarketingStream):
@@ -75,8 +76,9 @@ class CustomConversions(FBMarketingStream):
     entity_prefix = "customconversion"
     enable_deleted = False
 
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_custom_conversions(params=params)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_custom_conversions(params=params)
 
 
 class Ads(FBMarketingIncrementalStream):
@@ -84,8 +86,9 @@ class Ads(FBMarketingIncrementalStream):
 
     entity_prefix = "ad"
 
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_ads(params=params)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_ads(params=params)
 
 
 class AdSets(FBMarketingIncrementalStream):
@@ -93,8 +96,9 @@ class AdSets(FBMarketingIncrementalStream):
 
     entity_prefix = "adset"
 
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_ad_sets(params=params)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_ad_sets(params=params)
 
 
 class Campaigns(FBMarketingIncrementalStream):
@@ -102,8 +106,9 @@ class Campaigns(FBMarketingIncrementalStream):
 
     entity_prefix = "campaign"
 
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_campaigns(params=params)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_campaigns(params=params)
 
 
 class Activities(FBMarketingIncrementalStream):
@@ -113,8 +118,9 @@ class Activities(FBMarketingIncrementalStream):
     cursor_field = "event_time"
     primary_key = None
 
-    def list_objects(self, fields: List[str], params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_activities(fields=fields, params=params)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_activities(fields=fields, params=params)
 
     def read_records(
         self,
@@ -150,8 +156,9 @@ class Videos(FBMarketingIncrementalStream):
 
     entity_prefix = "video"
 
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_ad_videos(params=params)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_ad_videos(params=params)
 
 
 class AdAccount(FBMarketingStream):
@@ -189,8 +196,9 @@ class AdAccount(FBMarketingStream):
 class Images(FBMarketingReversedIncrementalStream):
     """See: https://developers.facebook.com/docs/marketing-api/reference/ad-image"""
 
-    def list_objects(self, params: Mapping[str, Any]) -> Iterable:
-        return self._api.account.get_ad_images(params=params, fields=self.fields)
+    def list_objects(self, stream_slice: dict, params: Mapping[str, Any]) -> Iterable:
+        for acc in self._api.accounts:
+            yield from acc.get_ad_images(params=params, fields=self.fields)
 
 
 class AdsInsightsAgeAndGender(AdsInsights):
