@@ -96,11 +96,11 @@ class ConnectorConfig(BaseConfig):
         def schema_extra(schema: Dict[str, Any], model: Type["ConnectorConfig"]) -> None:
             schema["properties"]["end_date"].pop("format")
 
-    account_id: str = Field(
+    account_id: Optional[str] = Field(
         title="Account ID",
         order=0,
-        description="The Facebook Ad account ID to use when pulling data from the Facebook Marketing API.",
-        examples=["111111111111111"],
+        description="The Facebook Ad account ID(s) to use when pulling data from the Facebook Marketing API. Seperate accounts with a comma. If no value is provided, data from all available accounts will be pulled in.",
+        examples=["", "111111111111111", "111111111111111,222222222222222"],
     )
 
     start_date: datetime = Field(

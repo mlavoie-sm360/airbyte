@@ -58,7 +58,7 @@ class SourceFacebookMarketing(AbstractSource):
 
         try:
             api = API(account_id=config.account_id, access_token=config.access_token)
-            logger.info(f"Select account {api.account}")
+            logger.info(f"{len(api.accounts)} accounts selected: {sorted([int(account.get('account_id')) for account in api.accounts], reverse=True)}")
             return True, None
         except requests.exceptions.RequestException as e:
             return False, e
